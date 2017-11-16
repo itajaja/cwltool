@@ -303,12 +303,12 @@ def job_executor(t,  # type: Process
         fetch_iter_lock.acquire()
         fetch_iter_lock.acquire()
         fetch_iter_lock.release()
-        if exceptions:
-            raise exceptions[0]
 
     jobiter = t.job(job_order_object, output_callback, **kwargs)
 
     for r in jobiter:
+        if exceptions:
+            raise exceptions[0]
         if r:
             builder = kwargs.get("builder", None)  # type: Builder
             if builder is not None:
@@ -325,6 +325,9 @@ def job_executor(t,  # type: Process
 
     while len(threads) > 0:
         wait_for_next_completion()
+
+    if exceptions:
+        raise exceptions[0]
 
     if final_output and final_output[0] and finaloutdir:
         final_output[0] = relocateOutputs(final_output[0], finaloutdir,
