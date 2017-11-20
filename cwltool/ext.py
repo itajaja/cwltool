@@ -81,14 +81,14 @@ class GenericJob(JobBase):
         return subprocess.check_call(
             EXT_SETTINGS.schedule_cmd,
             shell=True,
-            env={'CWL_PAYLOAD': json.dumps(payload)},
+            env={'CWL_PAYLOAD': json.dumps(payload), **os.environ},
         )
 
     def check_finished(self, payload):
         return subprocess.check_output(
             EXT_SETTINGS.check_cmd,
             shell=True,
-            env={'CWL_PAYLOAD': json.dumps(payload)},
+            env={'CWL_PAYLOAD': json.dumps(payload), **os.environ},
         )
 
     def _execute(self, payload, rm_tmpdir=True):
@@ -190,6 +190,7 @@ class GenericJob(JobBase):
 
         payload = {
             'id': self.name,
+            'index': kwargs['index'],
             'volumes': [{
                 'from': os.path.realpath(self.outdir),
                 'to': self.builder.outdir,
