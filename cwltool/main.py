@@ -279,11 +279,12 @@ def job_executor(t,  # type: Process
     fetch_iter_lock = threading.Lock()
     threads = set()
     exceptions = []
+    index = [0]
 
     def run_job(job):
-        def runner():
+        def runner(index):
             try:
-                job.run(**kwargs)
+                job.run(index=index, **kwargs)
             except WorkflowException as e:
                 exceptions.append(e)
             except Exception as e:
@@ -294,7 +295,8 @@ def job_executor(t,  # type: Process
             if fetch_iter_lock.locked():
                 fetch_iter_lock.release()
 
-        thread = threading.Thread(target=runner)
+        thread = threading.Thread(target=runner, args=(index[0],))
+        index[0] += 1
         thread.daemon = True
         threads.add(thread)
         thread.start()
