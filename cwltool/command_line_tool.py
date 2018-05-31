@@ -23,6 +23,7 @@ from six.moves import urllib
 from .builder import CONTENT_LIMIT, Builder, substitute
 from .docker import DockerCommandLineJob
 from .errors import WorkflowException
+from .ext import EXT_SETTINGS, GenericJob
 from .flatten import flatten
 from .job import CommandLineJob, JobBase
 from .pathmapper import (PathMapper, adjustDirObjs, adjustFileObjs,
@@ -213,6 +214,9 @@ class CommandLineTool(Process):
                     dockerReq = self.requirements[0]
                     if default_container == windows_default_container_id and use_container and onWindows():
                         _logger.warning(DEFAULT_CONTAINER_MSG % (windows_default_container_id, windows_default_container_id))
+
+        if EXT_SETTINGS.active:
+            return GenericJob()
 
         if dockerReq and use_container:
             if kwargs.get('singularity'):

@@ -1,4 +1,5 @@
 import json
+import importlib.util
 from io import open
 import logging
 import os
@@ -17,11 +18,19 @@ _logger = logging.getLogger("cwltool")
 
 class EXT_SETTINGS(object):
     active = 'CWL_EXT_ACTIVE' in os.environ
-    schedule_cmd = os.environ['CWL_EXT_SCHEDULE_CMD'] if active else None
-    check_cmd = os.environ['CWL_EXT_CHECK_CMD'] if active else None
+    ext_module = os.environ['CWL_EXT_MODULE'] if active else None
 
 
 class GenericJob(JobBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ext_module = EXT_SETTINGS.ext_module
+
+        spec = importlib.util.spec_from_file_location("cwl_ext_module", EXT_SETTINGS.ext_module)
+        self.ext_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.ext_module)
+
+
     def add_volumes(self, pathmapper, volumes):
         host_outdir = self.outdir
         container_outdir = self.builder.outdir
@@ -78,18 +87,10 @@ class GenericJob(JobBase):
                     })
 
     def schedule(self, payload):
-        return subprocess.check_call(
-            EXT_SETTINGS.schedule_cmd,
-            shell=True,
-            env={'CWL_PAYLOAD': json.dumps(payload), **os.environ},
-        )
+        return self.ext_module.schedule(payload)
 
     def check_finished(self, payload):
-        return subprocess.check_output(
-            EXT_SETTINGS.check_cmd,
-            shell=True,
-            env={'CWL_PAYLOAD': json.dumps(payload), **os.environ},
-        )
+        return self.ext_module.check_finished(payload)
 
     def _execute(self, payload, rm_tmpdir=True):
         scr, _ = get_feature(self, "ShellCommandRequirement")
@@ -97,15 +98,12 @@ class GenericJob(JobBase):
         outputs = {}
 
         try:
-            self.schedule(payload)
+            check_payload = self.schedule(payload)
 
             rcode = None
             while(rcode is None):
                 time.sleep(3)
-                try:
-                    rcode = int(self.check_finished(payload))
-                except ValueError:
-                    pass
+                rcode = self.check_finished(check_payload)
 
             if self.successCodes and rcode in self.successCodes:
                 processStatus = "success"
@@ -126,8 +124,8 @@ class GenericJob(JobBase):
                     inplace_update=self.inplace_update,
                 )
 
-            with open(self.stdout, 'w') as f:
-                f.write(self.get_log(payload))
+            # with open(self.stdout, 'w') as f:
+            #     f.write(self.get_log(payload))
 
             outputs = self.collect_outputs(self.outdir)
             outputs = bytes2str_in_dicts(outputs)
@@ -190,7 +188,6 @@ class GenericJob(JobBase):
 
         payload = {
             'id': self.name,
-            'index': kwargs['index'],
             'volumes': [{
                 'from': os.path.realpath(self.outdir),
                 'to': self.builder.outdir,
@@ -205,12 +202,11 @@ class GenericJob(JobBase):
             'env': {
                 'TMPDIR': '/tmp',
                 'HOME': self.builder.outdir,
+                **self.environment,
             },
             'img_id': img_id,
             'command_line': self.command_line,
         }
-
-        payload.update(self.environment)
 
         self.add_volumes(self.pathmapper, payload['volumes'])
         if self.generatemapper:
