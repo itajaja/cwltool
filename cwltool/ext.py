@@ -21,10 +21,9 @@ class EXT_SETTINGS(object):
     ext_module = os.environ['CWL_EXT_MODULE'] if active else None
 
 
-class GenericJob(JobBase):
+class ExtJob(JobBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ext_module = EXT_SETTINGS.ext_module
 
         spec = importlib.util.spec_from_file_location("cwl_ext_module", EXT_SETTINGS.ext_module)
         self.ext_module = importlib.util.module_from_spec(spec)
@@ -87,10 +86,13 @@ class GenericJob(JobBase):
                     })
 
     def schedule(self, payload):
-        return self.ext_module.schedule(payload)
+        return self.ext_module.schedule(payload, self)
 
     def check_finished(self, payload):
-        return self.ext_module.check_finished(payload)
+        return self.ext_module.check_finished(payload, self)
+
+    def on_finished(self, outputs, status):
+        return self.ext_module.on_finished(outputs, status, self)
 
     def _execute(self, payload, rm_tmpdir=True):
         scr, _ = get_feature(self, "ShellCommandRequirement")
@@ -142,6 +144,7 @@ class GenericJob(JobBase):
         _logger.debug(u"[job %s] %s", self.name, json.dumps(outputs, indent=4))
 
         with job_output_lock:
+            self.on_finished(outputs, processStatus)
             self.output_callback(outputs, processStatus)
 
         if self.stagedir and os.path.exists(self.stagedir):
