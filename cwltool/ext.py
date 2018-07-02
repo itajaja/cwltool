@@ -26,6 +26,9 @@ class ExtJob(JobBase):
         super().__init__(*args, **kwargs)
 
         spec = importlib.util.spec_from_file_location("cwl_ext_module", EXT_SETTINGS.ext_module)
+        if not spec:
+            raise ValueError(f'{EXT_SETTINGS.ext_module} is not a python module')
+
         self.ext_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.ext_module)
 
