@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+import json
 from typing import IO, Any, Dict, Text
 
 from rdflib import Graph
@@ -177,3 +178,53 @@ def printdot(wf, ctx, stdout, include_parameters=False):
         dot_without_parameters(g, stdout)
 
     stdout.write("}")
+
+
+def print_json(wf, ctx, stdout):
+    g = gather(wf, ctx)
+
+    graph = {
+        'links': [],
+        'nodes': [],
+    }
+
+    nodes = g.query(
+        """SELECT ?step ?runtype
+           WHERE {
+              ?wf rdf:type cwl:Workflow .
+              ?wf Workflow:steps ?step .
+              ?step cwl:run ?run .
+              ?run rdf:type ?runtype .
+           } ORDER BY ?wf""")
+
+    def get_step_id(step):
+        return urllib.parse.urldefrag(Text(step))[1]
+
+    for step, runtype in nodes:
+        if Text(runtype) != "https://w3id.org/cwl/cwl#Workflow":
+            step_id = get_step_id(step)
+            graph['nodes'].append({
+                'id': step_id,
+                'value': {
+                    'label': step_id,
+                },
+            })
+
+
+    links = g.query(
+        """SELECT DISTINCT ?src ?sink
+            WHERE {
+                ?wf1 Workflow:steps ?src .
+                ?wf2 Workflow:steps ?sink .
+                ?src cwl:out ?out .
+                ?inp cwl:source ?out .
+                ?sink cwl:in ?inp .
+            } """)
+
+    for src, sink in links:
+        graph['links'].append({
+            'u': get_step_id(src),
+            'v': get_step_id(sink),
+        })
+
+    stdout.write(json.dumps(graph, indent=2))

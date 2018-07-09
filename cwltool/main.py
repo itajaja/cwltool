@@ -23,7 +23,7 @@ from schema_salad.sourceline import strip_dup_lineno
 
 from . import command_line_tool, workflow
 from .argparser import arg_parser, generate_parser, DEFAULT_TMP_PREFIX
-from .cwlrdf import printdot, printrdf
+from .cwlrdf import printdot, printrdf, print_json
 from .errors import UnsupportedRequirement, WorkflowException
 from .executors import SingleJobExecutor, MultithreadedJobExecutor
 from .load_tool import (FetcherConstructorType, resolve_tool_uri,
@@ -227,7 +227,7 @@ def init_job_order(job_order_object,  # type: MutableMapping[Text, Any]
             p["location"] = p["path"]
             del p["path"]
 
-  
+
     ns = {}  # type: Dict[Text, Union[Dict[Any, Any], Text, Iterable[Text]]]
     ns.update(t.metadata.get("$namespaces", {}))
     ld = Loader(ns)
@@ -359,6 +359,7 @@ def main(argsl=None,  # type: List[str]
                      'print_pre': False,
                      'print_rdf': False,
                      'print_dot': False,
+                     'print_json': False,
                      'relative_deps': False,
                      'tmp_outdir_prefix': 'tmp',
                      'tmpdir_prefix': 'tmp',
@@ -510,6 +511,10 @@ def main(argsl=None,  # type: List[str]
 
             if args.print_dot:
                 printdot(tool, document_loader.ctx, stdout)
+                return 0
+
+            if args.print_json:
+                print_json(tool, document_loader.ctx, stdout)
                 return 0
 
         except (validate.ValidationException) as exc:

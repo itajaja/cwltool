@@ -125,6 +125,8 @@ def arg_parser():  # type: () -> argparse.ArgumentParser
                          help="Print corresponding RDF graph for workflow and exit")
     exgroup.add_argument("--print-dot", action="store_true",
                          help="Print workflow visualization in graphviz format and exit")
+    exgroup.add_argument("--print-json", action="store_true",
+                         help="Print workflow graph in json format")
     exgroup.add_argument("--print-pre", action="store_true", help="Print CWL document after preprocessing.")
     exgroup.add_argument("--print-deps", action="store_true", help="Print CWL document dependencies.")
     exgroup.add_argument("--print-input-deps", action="store_true", help="Print input object document dependencies.")
