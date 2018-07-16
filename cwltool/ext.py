@@ -203,6 +203,7 @@ class ExtJob(JobBase):
                 'to': '/tmp',
                 'readonly': False,
             }],
+            'output_dir': self.outdir,
             'workdir': self.builder.outdir,
             'stdout': self.stdout,
             'env': {
